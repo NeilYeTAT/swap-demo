@@ -8,13 +8,15 @@ export default function Page() {
         <div className="h-[130px] p-4">
           <header>出售</header>
 
-          <div className="text-4xl">
+          <div className="flex items-center justify-between gap-4 text-4xl">
             <Input placeholder="0" />
 
-            <div className="mt-1 flex justify-between text-sm text-gray-800">
-              <span className="">US</span>
-              <span className="">balance 0</span>
-            </div>
+            <div>Link</div>
+          </div>
+
+          <div className="mt-1 flex justify-between text-sm text-gray-800">
+            <span>US$</span>
+            <span>balance 0</span>
           </div>
         </div>
 
@@ -22,12 +24,14 @@ export default function Page() {
         <div className="h-[130px] p-4">
           <header>购买</header>
 
-          <div className="text-4xl">
-            <Input placeholder="0" />
+          <div className="flex items-center justify-between gap-4 text-4xl">
+            <Input placeholder="0" disabled />
 
-            <div className="mt-1 text-sm text-gray-800">
-              <span>US</span>
-            </div>
+            <div>USDC</div>
+          </div>
+
+          <div className="mt-1 text-sm text-gray-800">
+            <span>US$</span>
           </div>
         </div>
       </main>
