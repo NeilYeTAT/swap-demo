@@ -161,7 +161,7 @@ export default function Page() {
           </div>
         </div>
 
-        <Button onClick={handleSwap} disabled={isSwapDisabled()} className="w-full">
+        <Button onClick={handleSwap} disabled={isSwapDisabled()} className="w-full cursor-pointer">
           {getButtonText()}
         </Button>
       </main>

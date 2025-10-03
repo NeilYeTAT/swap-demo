@@ -21,7 +21,7 @@ export const Providers: FC<{ children: ReactNode }> = ({ children }) => {
         <WagmiProvider config={wagmiConfig}>
           <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
             <RainbowKitProvider>
-              <Toaster />
+              <Toaster richColors position="bottom-left" />
               <ErrorHandler />
               {children}
             </RainbowKitProvider>
