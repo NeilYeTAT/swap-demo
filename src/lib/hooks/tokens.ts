@@ -68,14 +68,14 @@ export function useLinkBalance() {
   );
 }
 
-// export function useUSDCBalance() {
-//   const account = useAtomValue(accountAtom);
-//   const linkAddress = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
+export function useUSDCBalance() {
+  const account = useAtomValue(accountAtom);
+  const linkAddress = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
 
-//   return useBalance(
-//     account != null ? { account, chainId: ChainId.Sepolia, address: linkAddress } : skipToken,
-//   );
-// }
+  return useBalance(
+    account != null ? { account, chainId: ChainId.Sepolia, address: linkAddress } : skipToken,
+  );
+}
 
 export function useTransfer() {
   const queryClient = useQueryClient();
