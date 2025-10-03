@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAmountsOut, getLinkToUsdcPrice, getUsdcToLinkPrice } from '@/lib/apis/uniswap';
+import {
+  getAmountsIn,
+  getAmountsOut,
+  getLinkToUsdcPrice,
+  getUsdcToLinkPrice,
+} from '@/lib/apis/uniswap';
 
 export function useLinkToUsdcPrice() {
   return useQuery({
@@ -27,5 +32,18 @@ export function useSwapAmountsOut(amountIn: string, fromToken: 'LINK' | 'USDC') 
       return getAmountsOut(amountIn, fromToken);
     },
     enabled: amountIn !== '' && amountIn !== '0',
+  });
+}
+
+export function useSwapAmountsIn(amountOut: string, toToken: 'LINK' | 'USDC') {
+  return useQuery({
+    queryKey: ['swap-amounts-in', amountOut, toToken],
+    queryFn: async () => {
+      if (amountOut === '' || amountOut === '0') {
+        return '0';
+      }
+      return getAmountsIn(amountOut, toToken);
+    },
+    enabled: amountOut !== '' && amountOut !== '0',
   });
 }

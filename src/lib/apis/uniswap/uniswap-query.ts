@@ -62,3 +62,26 @@ export async function getAmountsOut(amountIn: string, fromToken: 'LINK' | 'USDC'
 
   return formattedOutput;
 }
+
+export async function getAmountsIn(amountOut: string, toToken: 'LINK' | 'USDC') {
+  const isToUsdc = toToken === 'USDC';
+  const path = isToUsdc
+    ? ([LINK_Address, WETH_Address, USDC_Address] as const)
+    : ([USDC_Address, WETH_Address, LINK_Address] as const);
+  const outputDecimals = isToUsdc ? 6 : 18;
+  const inputDecimals = isToUsdc ? 18 : 6;
+
+  const parsedAmountOut = parseUnits(amountOut, outputDecimals);
+
+  const amounts = await readContract(wagmiConfig, {
+    address: uniswapV2Router02ContractAddress,
+    abi: uniswapRouterAbi,
+    functionName: 'getAmountsIn',
+    args: [parsedAmountOut, path],
+    chainId: ChainId.Sepolia,
+  });
+
+  const formattedInput = formatUnits(amounts[0], inputDecimals);
+
+  return formattedInput;
+}

@@ -1,9 +1,10 @@
 'use client';
 
 import { useAtomValue } from 'jotai';
-import { useState } from 'react';
+import { ArrowUpDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useLinkBalance, useUSDCBalance } from '@/lib/hooks/tokens';
-import { useSwapAmountsOut, useSwapTokens } from '@/lib/hooks/uniswap';
+import { useSwapAmountsIn, useSwapAmountsOut, useSwapTokens } from '@/lib/hooks/uniswap';
 import { accountAtom } from '@/lib/states/evm';
 import { Button } from '@/ui/shadcn/button';
 import { Input } from '@/ui/shadcn/input';
@@ -18,38 +19,46 @@ export default function Page() {
   const [activeInput, setActiveInput] = useState<'link' | 'usdc'>('link');
 
   const { data: linkToUsdc } = useSwapAmountsOut(activeInput === 'link' ? linkAmount : '', 'LINK');
-  const { data: usdcToLink } = useSwapAmountsOut(activeInput === 'usdc' ? usdcAmount : '', 'USDC');
+  const { data: usdcToLink } = useSwapAmountsIn(activeInput === 'usdc' ? usdcAmount : '', 'USDC');
 
   const { mutate: swap, isPending } = useSwapTokens();
+
+  useEffect(() => {
+    if (activeInput === 'link' && linkToUsdc != null) {
+      setUsdcAmount(linkToUsdc);
+    }
+  }, [activeInput, linkToUsdc]);
+
+  useEffect(() => {
+    if (activeInput === 'usdc' && usdcToLink != null) {
+      setLinkAmount(usdcToLink);
+    }
+  }, [activeInput, usdcToLink]);
 
   const handleLinkInputChange = (value: string) => {
     setLinkAmount(value);
     setActiveInput('link');
-    if (linkToUsdc != null) {
-      setUsdcAmount(linkToUsdc);
-    }
   };
 
   const handleUsdcInputChange = (value: string) => {
     setUsdcAmount(value);
     setActiveInput('usdc');
-    if (usdcToLink != null) {
-      setLinkAmount(usdcToLink);
-    }
   };
 
   const handleSwap = () => {
-    if (activeInput === 'link' && linkAmount !== '' && linkToUsdc != null) {
+    const finalLinkAmount = activeInput === 'link' ? linkAmount : usdcToLink;
+    const finalUsdcAmount = activeInput === 'link' ? linkToUsdc : usdcAmount;
+
+    if (
+      finalLinkAmount != null &&
+      finalUsdcAmount != null &&
+      finalLinkAmount !== '' &&
+      finalUsdcAmount !== ''
+    ) {
       swap({
-        amountIn: linkAmount,
-        amountOutMin: linkToUsdc,
+        amountIn: finalLinkAmount,
+        amountOutMin: finalUsdcAmount,
         fromToken: 'LINK',
-      });
-    } else if (activeInput === 'usdc' && usdcAmount !== '' && usdcToLink != null) {
-      swap({
-        amountIn: usdcAmount,
-        amountOutMin: usdcToLink,
-        fromToken: 'USDC',
       });
     }
   };
@@ -58,31 +67,27 @@ export default function Page() {
     if (account == null) return true;
     if (isPending === true) return true;
 
-    if (activeInput === 'link') {
-      if (linkAmount === '' || linkAmount === '0' || linkToUsdc == null) return true;
-      const balance = parseFloat(linkBalance ?? '0');
-      const amount = parseFloat(linkAmount === '' ? '0' : linkAmount);
-      return amount > balance;
-    } else {
-      if (usdcAmount === '' || usdcAmount === '0' || usdcToLink == null) return true;
-      const balance = parseFloat(usdcBalance ?? '0');
-      const amount = parseFloat(usdcAmount === '' ? '0' : usdcAmount);
-      return amount > balance;
-    }
+    const finalLinkAmount = activeInput === 'link' ? linkAmount : usdcToLink;
+    const finalUsdcAmount = activeInput === 'link' ? linkToUsdc : usdcAmount;
+
+    if (finalLinkAmount == null || finalUsdcAmount == null) return true;
+    if (finalLinkAmount === '' || finalLinkAmount === '0') return true;
+    if (finalUsdcAmount === '' || finalUsdcAmount === '0') return true;
+
+    const balance = parseFloat(linkBalance ?? '0');
+    const amount = parseFloat(finalLinkAmount);
+    return amount > balance;
   };
 
   const getButtonText = () => {
     if (account == null) return 'Connect Wallet';
     if (isPending === true) return 'Swapping...';
 
-    if (activeInput === 'link') {
+    const finalLinkAmount = activeInput === 'link' ? linkAmount : usdcToLink;
+    if (finalLinkAmount != null) {
       const balance = parseFloat(linkBalance ?? '0');
-      const amount = parseFloat(linkAmount === '' ? '0' : linkAmount);
+      const amount = parseFloat(finalLinkAmount);
       if (amount > balance) return 'Insufficient LINK balance';
-    } else {
-      const balance = parseFloat(usdcBalance ?? '0');
-      const amount = parseFloat(usdcAmount === '' ? '0' : usdcAmount);
-      if (amount > balance) return 'Insufficient USDC balance';
     }
 
     return 'Swap';
@@ -111,13 +116,15 @@ export default function Page() {
           </div>
         </div>
 
+        <ArrowUpDown className="mx-auto cursor-pointer rounded-md border p-1" />
+
         <div className="h-[130px]">
           <header>购买</header>
 
           <div className="flex items-center justify-between gap-4 text-4xl">
             <Input
               placeholder="0"
-              value={activeInput === 'link' ? (linkToUsdc ?? '') : usdcAmount}
+              value={usdcAmount}
               onChange={e => handleUsdcInputChange(e.target.value)}
               disabled={isPending}
             />
