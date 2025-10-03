@@ -14,51 +14,64 @@ export default function Page() {
   const { data: linkBalance } = useLinkBalance();
   const { data: usdcBalance } = useUSDCBalance();
 
-  const [linkAmount, setLinkAmount] = useState('');
-  const [usdcAmount, setUsdcAmount] = useState('');
-  const [activeInput, setActiveInput] = useState<'link' | 'usdc'>('link');
+  const [sellToken, setSellToken] = useState<'LINK' | 'USDC'>('LINK');
+  const [sellAmount, setSellAmount] = useState('');
+  const [buyAmount, setBuyAmount] = useState('');
+  const [activeInput, setActiveInput] = useState<'sell' | 'buy'>('sell');
 
-  const { data: linkToUsdc } = useSwapAmountsOut(activeInput === 'link' ? linkAmount : '', 'LINK');
-  const { data: usdcToLink } = useSwapAmountsIn(activeInput === 'usdc' ? usdcAmount : '', 'USDC');
+  const { data: sellToOut } = useSwapAmountsOut(
+    activeInput === 'sell' ? sellAmount : '',
+    sellToken,
+  );
+  const { data: buyToIn } = useSwapAmountsIn(
+    activeInput === 'buy' ? buyAmount : '',
+    sellToken === 'LINK' ? 'USDC' : 'LINK',
+  );
 
   const { mutate: swap, isPending } = useSwapTokens();
 
   useEffect(() => {
-    if (activeInput === 'link' && linkToUsdc != null) {
-      setUsdcAmount(linkToUsdc);
+    if (activeInput === 'sell' && sellToOut != null) {
+      setBuyAmount(sellToOut);
     }
-  }, [activeInput, linkToUsdc]);
+  }, [activeInput, sellToOut]);
 
   useEffect(() => {
-    if (activeInput === 'usdc' && usdcToLink != null) {
-      setLinkAmount(usdcToLink);
+    if (activeInput === 'buy' && buyToIn != null) {
+      setSellAmount(buyToIn);
     }
-  }, [activeInput, usdcToLink]);
+  }, [activeInput, buyToIn]);
 
-  const handleLinkInputChange = (value: string) => {
-    setLinkAmount(value);
-    setActiveInput('link');
+  const handleSellInputChange = (value: string) => {
+    setSellAmount(value);
+    setActiveInput('sell');
   };
 
-  const handleUsdcInputChange = (value: string) => {
-    setUsdcAmount(value);
-    setActiveInput('usdc');
+  const handleBuyInputChange = (value: string) => {
+    setBuyAmount(value);
+    setActiveInput('buy');
+  };
+
+  const handleSwitch = () => {
+    setSellToken(sellToken === 'LINK' ? 'USDC' : 'LINK');
+    setSellAmount('');
+    setBuyAmount('');
   };
 
   const handleSwap = () => {
-    const finalLinkAmount = activeInput === 'link' ? linkAmount : usdcToLink;
-    const finalUsdcAmount = activeInput === 'link' ? linkToUsdc : usdcAmount;
+    const finalSellAmount = activeInput === 'sell' ? sellAmount : buyToIn;
+    const finalBuyAmount = activeInput === 'sell' ? sellToOut : buyAmount;
 
     if (
-      finalLinkAmount != null &&
-      finalUsdcAmount != null &&
-      finalLinkAmount !== '' &&
-      finalUsdcAmount !== ''
+      finalSellAmount != null &&
+      finalBuyAmount != null &&
+      finalSellAmount !== '' &&
+      finalBuyAmount !== ''
     ) {
       swap({
-        amountIn: finalLinkAmount,
-        amountOutMin: finalUsdcAmount,
-        fromToken: 'LINK',
+        amountIn: finalSellAmount,
+        amountOutMin: finalBuyAmount,
+        fromToken: sellToken,
       });
     }
   };
@@ -67,15 +80,15 @@ export default function Page() {
     if (account == null) return true;
     if (isPending === true) return true;
 
-    const finalLinkAmount = activeInput === 'link' ? linkAmount : usdcToLink;
-    const finalUsdcAmount = activeInput === 'link' ? linkToUsdc : usdcAmount;
+    const finalSellAmount = activeInput === 'sell' ? sellAmount : buyToIn;
+    const finalBuyAmount = activeInput === 'sell' ? sellToOut : buyAmount;
 
-    if (finalLinkAmount == null || finalUsdcAmount == null) return true;
-    if (finalLinkAmount === '' || finalLinkAmount === '0') return true;
-    if (finalUsdcAmount === '' || finalUsdcAmount === '0') return true;
+    if (finalSellAmount == null || finalBuyAmount == null) return true;
+    if (finalSellAmount === '' || finalSellAmount === '0') return true;
+    if (finalBuyAmount === '' || finalBuyAmount === '0') return true;
 
-    const balance = parseFloat(linkBalance ?? '0');
-    const amount = parseFloat(finalLinkAmount);
+    const balance = parseFloat(sellToken === 'LINK' ? (linkBalance ?? '0') : (usdcBalance ?? '0'));
+    const amount = parseFloat(finalSellAmount);
     return amount > balance;
   };
 
@@ -83,15 +96,22 @@ export default function Page() {
     if (account == null) return 'Connect Wallet';
     if (isPending === true) return 'Swapping...';
 
-    const finalLinkAmount = activeInput === 'link' ? linkAmount : usdcToLink;
-    if (finalLinkAmount != null) {
-      const balance = parseFloat(linkBalance ?? '0');
-      const amount = parseFloat(finalLinkAmount);
-      if (amount > balance) return 'Insufficient LINK balance';
+    const finalSellAmount = activeInput === 'sell' ? sellAmount : buyToIn;
+    if (finalSellAmount != null) {
+      const balance = parseFloat(
+        sellToken === 'LINK' ? (linkBalance ?? '0') : (usdcBalance ?? '0'),
+      );
+      const amount = parseFloat(finalSellAmount);
+      if (amount > balance) return `Insufficient ${sellToken} balance`;
     }
 
     return 'Swap';
   };
+
+  const sellTokenSymbol = sellToken;
+  const buyTokenSymbol = sellToken === 'LINK' ? 'USDC' : 'LINK';
+  const sellTokenBalance = sellToken === 'LINK' ? linkBalance : usdcBalance;
+  const buyTokenBalance = sellToken === 'LINK' ? usdcBalance : linkBalance;
 
   return (
     <div className="mx-auto flex flex-1">
@@ -102,21 +122,24 @@ export default function Page() {
           <div className="flex items-center justify-between gap-4 text-4xl">
             <Input
               placeholder="0"
-              value={linkAmount}
-              onChange={e => handleLinkInputChange(e.target.value)}
+              value={sellAmount}
+              onChange={e => handleSellInputChange(e.target.value)}
               disabled={isPending}
             />
 
-            <div>Link</div>
+            <div>{sellTokenSymbol}</div>
           </div>
 
           <div className="mt-1 flex justify-between text-sm text-gray-800">
             <span>US$</span>
-            <span>balance {linkBalance ?? 0}</span>
+            <span>balance {sellTokenBalance ?? 0}</span>
           </div>
         </div>
 
-        <ArrowUpDown className="mx-auto cursor-pointer rounded-md border p-1" />
+        <ArrowUpDown
+          className="mx-auto cursor-pointer rounded-md border p-1"
+          onClick={handleSwitch}
+        />
 
         <div className="h-[130px]">
           <header>购买</header>
@@ -124,17 +147,17 @@ export default function Page() {
           <div className="flex items-center justify-between gap-4 text-4xl">
             <Input
               placeholder="0"
-              value={usdcAmount}
-              onChange={e => handleUsdcInputChange(e.target.value)}
+              value={buyAmount}
+              onChange={e => handleBuyInputChange(e.target.value)}
               disabled={isPending}
             />
 
-            <div>USDC</div>
+            <div>{buyTokenSymbol}</div>
           </div>
 
           <div className="mt-1 flex justify-between text-sm text-gray-800">
             <span>US$</span>
-            <span>balance {usdcBalance ?? 0}</span>
+            <span>balance {buyTokenBalance ?? 0}</span>
           </div>
         </div>
 
