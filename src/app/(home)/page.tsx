@@ -185,15 +185,18 @@ export default function Page() {
             </div>
           </div>
 
-          {
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>最低收到</span>
-              <span>
-                {(parseFloat(buyAmount) * (1 - parseFloat(slippage) / 100)).toFixed(6)}{' '}
-                {buyTokenSymbol}
-              </span>
-            </div>
-          }
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>最低收到</span>
+            <span>
+              {buyAmount !== '' &&
+              slippage !== '' &&
+              !isNaN(parseFloat(buyAmount)) &&
+              !isNaN(parseFloat(slippage))
+                ? (parseFloat(buyAmount) * (1 - parseFloat(slippage) / 100)).toFixed(6)
+                : '0.000000'}{' '}
+              {buyTokenSymbol}
+            </span>
+          </div>
 
           <Button
             onClick={handleSwap}
