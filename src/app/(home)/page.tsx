@@ -37,7 +37,7 @@ export default function Page() {
     sellToken === 'LINK' ? 'USDC' : 'LINK',
   );
 
-  const { mutate: swap, isPending } = useSwapTokens();
+  const { mutate: swap, isPending, data: swapData } = useSwapTokens();
 
   useEffect(() => {
     if (activeInput === 'sell' && sellToOut != null) {
@@ -52,22 +52,18 @@ export default function Page() {
   }, [activeInput, buyToIn]);
 
   const handleSellInputChange = (value: string) => {
-    try {
-      numberInputSchema.parse(value);
+    const result = numberInputSchema.safeParse(value);
+    if (result.success) {
       setSellAmount(value);
       setActiveInput('sell');
-    } catch {
-      // ignore
     }
   };
 
   const handleBuyInputChange = (value: string) => {
-    try {
-      numberInputSchema.parse(value);
+    const result = numberInputSchema.safeParse(value);
+    if (result.success) {
       setBuyAmount(value);
       setActiveInput('buy');
-    } catch {
-      // ignore
     }
   };
 
@@ -214,6 +210,16 @@ export default function Page() {
             </span>
           </div>
 
+          {/* <div className="flex justify-between text-sm text-gray-600">
+            <span>预估手续费 (0.3%)</span>
+            <span>
+              {sellAmount !== '' && !isNaN(parseFloat(sellAmount))
+                ? (parseFloat(sellAmount) * 0.003).toFixed(6)
+                : '0.000000'}{' '}
+              {sellTokenSymbol}
+            </span>
+          </div> */}
+
           <Button
             onClick={handleSwap}
             disabled={isSwapDisabled()}
@@ -223,6 +229,16 @@ export default function Page() {
           </Button>
         </footer>
       </main>
+
+      {swapData?.transactionHash != null && (
+        <Link
+          href={`https://sepolia.etherscan.io/tx/${swapData.transactionHash}`}
+          className="m-auto mt-4 text-green-500 underline"
+          target="_blank"
+        >
+          {swapData.transactionHash}
+        </Link>
+      )}
 
       <footer className="m-auto flex flex-col gap-2">
         <div className="flex items-center justify-between gap-8">
