@@ -17,9 +17,10 @@ export default function Page() {
   const { data: usdcBalance } = useUSDCBalance();
 
   const [sellToken, setSellToken] = useState<'LINK' | 'USDC'>('LINK');
-  const [sellAmount, setSellAmount] = useState('');
-  const [buyAmount, setBuyAmount] = useState('');
+  const [sellAmount, setSellAmount] = useState('0');
+  const [buyAmount, setBuyAmount] = useState('0');
   const [activeInput, setActiveInput] = useState<'sell' | 'buy'>('sell');
+  const [slippage, setSlippage] = useState('0.50');
 
   const { data: sellToOut } = useSwapAmountsOut(
     activeInput === 'sell' ? sellAmount : '',
@@ -70,10 +71,14 @@ export default function Page() {
       finalSellAmount !== '' &&
       finalBuyAmount !== ''
     ) {
+      const slippageValue = parseFloat(slippage) / 100;
+      const slippageTolerance = 1 - slippageValue;
+
       swap({
         amountIn: finalSellAmount,
         amountOutMin: finalBuyAmount,
         fromToken: sellToken,
+        slippage: slippageTolerance,
       });
     }
   };
@@ -158,6 +163,38 @@ export default function Page() {
         </div>
 
         <footer className="flex flex-col gap-4">
+          <div className="flex justify-between gap-8">
+            <h3 className="text-nowrap">滑点上限</h3>
+            <div className="relative">
+              <Input
+                value={slippage}
+                onChange={e => {
+                  const value = e.target.value.replace('%', '');
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                    setSlippage(value);
+                  } else if (value === '') {
+                    setSlippage('');
+                  }
+                }}
+                className="pr-8"
+              />
+              <span className="absolute top-1/2 right-2 -translate-y-1/2 text-sm text-gray-500">
+                %
+              </span>
+            </div>
+          </div>
+
+          {
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>最低收到</span>
+              <span>
+                {(parseFloat(buyAmount) * (1 - parseFloat(slippage) / 100)).toFixed(6)}{' '}
+                {buyTokenSymbol}
+              </span>
+            </div>
+          }
+
           <Button
             onClick={handleSwap}
             disabled={isSwapDisabled()}
