@@ -2,7 +2,9 @@
 
 import { useAtomValue } from 'jotai';
 import { ArrowUpDown } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import { useLinkBalance, useUSDCBalance } from '@/lib/hooks/tokens';
 import { useSwapAmountsIn, useSwapAmountsOut, useSwapTokens } from '@/lib/hooks/uniswap';
 import { accountAtom } from '@/lib/states/evm';
@@ -114,7 +116,7 @@ export default function Page() {
   const buyTokenBalance = sellToken === 'LINK' ? usdcBalance : linkBalance;
 
   return (
-    <div className="mx-auto flex flex-1">
+    <div className="mx-auto flex flex-1 flex-col">
       <main className="m-auto flex w-[480px] flex-col justify-between rounded-xl border-[0.5px] p-4">
         <div className="h-[130px]">
           <header>出售</header>
@@ -130,10 +132,7 @@ export default function Page() {
             <div>{sellTokenSymbol}</div>
           </div>
 
-          <div className="mt-1 flex justify-between text-sm text-gray-800">
-            <span>US$</span>
-            <span>balance {sellTokenBalance ?? 0}</span>
-          </div>
+          <span className="mt-1 text-sm text-gray-800">balance {sellTokenBalance ?? 0}</span>
         </div>
 
         <ArrowUpDown
@@ -155,16 +154,52 @@ export default function Page() {
             <div>{buyTokenSymbol}</div>
           </div>
 
-          <div className="mt-1 flex justify-between text-sm text-gray-800">
-            <span>US$</span>
-            <span>balance {buyTokenBalance ?? 0}</span>
-          </div>
+          <span className="mt-1 text-sm text-gray-800">balance {buyTokenBalance ?? 0}</span>
         </div>
 
-        <Button onClick={handleSwap} disabled={isSwapDisabled()} className="w-full cursor-pointer">
-          {getButtonText()}
-        </Button>
+        <footer className="flex flex-col gap-4">
+          <Button
+            onClick={handleSwap}
+            disabled={isSwapDisabled()}
+            className="w-full cursor-pointer"
+          >
+            {getButtonText()}
+          </Button>
+        </footer>
       </main>
+
+      <footer className="m-auto flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-8">
+          <h3>USDC</h3>
+          <Link
+            className="cursor-pointer hover:underline"
+            href={'https://sepolia.etherscan.io/address/0x779877A7B0D9E8603169DdbD7836e478b4624789'}
+            target="_blank"
+          >
+            0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+          </Link>
+          <CopyButton
+            content="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            size={'sm'}
+            className="rounded-sm p-1"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-8">
+          <h3>LINK</h3>
+          <Link
+            className="cursor-pointer hover:underline"
+            href={'https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'}
+            target="_blank"
+          >
+            0x779877A7B0D9E8603169DdbD7836e478b4624789
+          </Link>
+          <CopyButton
+            content="0x779877A7B0D9E8603169DdbD7836e478b4624789"
+            size={'sm'}
+            className="rounded-sm p-1"
+          />
+        </div>
+      </footer>
     </div>
   );
 }
