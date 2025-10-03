@@ -4,12 +4,18 @@ import { useAtomValue } from 'jotai';
 import { ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { z } from 'zod';
 import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import { useLinkBalance, useUSDCBalance } from '@/lib/hooks/tokens';
 import { useSwapAmountsIn, useSwapAmountsOut, useSwapTokens } from '@/lib/hooks/uniswap';
 import { accountAtom } from '@/lib/states/evm';
 import { Button } from '@/ui/shadcn/button';
 import { Input } from '@/ui/shadcn/input';
+
+const numberInputSchema = z
+  .string()
+  .regex(/^[0-9]*\.?[0-9]*$/, 'Only numbers allowed')
+  .refine(val => val === '' || !isNaN(parseFloat(val)), 'Invalid number');
 
 export default function Page() {
   const account = useAtomValue(accountAtom);
@@ -46,13 +52,23 @@ export default function Page() {
   }, [activeInput, buyToIn]);
 
   const handleSellInputChange = (value: string) => {
-    setSellAmount(value);
-    setActiveInput('sell');
+    try {
+      numberInputSchema.parse(value);
+      setSellAmount(value);
+      setActiveInput('sell');
+    } catch {
+      // ignore
+    }
   };
 
   const handleBuyInputChange = (value: string) => {
-    setBuyAmount(value);
-    setActiveInput('buy');
+    try {
+      numberInputSchema.parse(value);
+      setBuyAmount(value);
+      setActiveInput('buy');
+    } catch {
+      // ignore
+    }
   };
 
   const handleSwitch = () => {
