@@ -1,37 +1,11 @@
 import type { Address } from 'viem';
 import { readContract, waitForTransactionReceipt, writeContract } from '@wagmi/core';
-import { parseUnits } from 'viem';
+import { erc20Abi, parseUnits } from 'viem';
 import { ChainId } from '@/configs/chains';
+import { LINK_Address, USDC_Address, WETH_Address } from '@/configs/core/token';
 import { uniswapV2Router02ContractAddress } from '@/configs/core/uniswap';
 import { uniswapRouterAbi } from '@/lib/abis/uniswap-router';
 import { wagmiConfig } from '@/lib/utils/wagmi';
-
-const WETH_ADDRESS = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14' as Address;
-const LINK_ADDRESS = '0x779877A7B0D9E8603169DdbD7836e478b4624789' as Address;
-const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as Address;
-
-const erc20Abi = [
-  {
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    name: 'allowance',
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
 
 export async function approveToken(tokenAddress: Address, amount: bigint) {
   const hash = await writeContract(wagmiConfig, {
@@ -70,8 +44,8 @@ export async function swapTokens(
 ) {
   const isLinkToUsdc = fromToken === 'LINK';
   const path = isLinkToUsdc
-    ? [LINK_ADDRESS, WETH_ADDRESS, USDC_ADDRESS]
-    : [USDC_ADDRESS, WETH_ADDRESS, LINK_ADDRESS];
+    ? [LINK_Address, WETH_Address, USDC_Address]
+    : [USDC_Address, WETH_Address, LINK_Address];
 
   const inputDecimals = isLinkToUsdc ? 18 : 6;
   const outputDecimals = isLinkToUsdc ? 6 : 18;
@@ -79,7 +53,7 @@ export async function swapTokens(
   const parsedAmountIn = parseUnits(amountIn, inputDecimals);
   const parsedAmountOutMin = parseUnits(amountOutMin, outputDecimals);
 
-  const tokenToApprove = isLinkToUsdc ? LINK_ADDRESS : USDC_ADDRESS;
+  const tokenToApprove = isLinkToUsdc ? LINK_Address : USDC_Address;
 
   const allowance = await checkAllowance(tokenToApprove, to);
 
