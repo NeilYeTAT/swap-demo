@@ -1,6 +1,11 @@
+'use client';
+
+import { useLinkBalance } from '@/lib/hooks/tokens';
 import { Input } from '@/ui/shadcn/input';
 
 export default function Page() {
+  const { data: linkBalance } = useLinkBalance();
+
   return (
     <div className="mx-auto flex flex-1">
       <main className="m-auto flex w-[480px] flex-col justify-between rounded-xl border-[0.5px] p-2">
@@ -16,7 +21,7 @@ export default function Page() {
 
           <div className="mt-1 flex justify-between text-sm text-gray-800">
             <span>US$</span>
-            <span>balance 0</span>
+            <span>balance {linkBalance ?? 0}</span>
           </div>
         </div>
 

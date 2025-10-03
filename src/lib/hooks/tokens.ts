@@ -7,7 +7,10 @@ import type {
 import type { SkipToken } from '@tanstack/react-query';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { waitForTransactionReceipt } from '@wagmi/core';
+import { useAtomValue } from 'jotai';
+import { ChainId } from '@/configs/chains';
 import { getBalance, getDecimals, getSymbol, transfer } from '../apis/tokens';
+import { accountAtom } from '../states/evm';
 import { wagmiConfig } from '../utils/wagmi';
 
 export function useDecimals(params: GetDecimalsParams | SkipToken) {
@@ -55,6 +58,24 @@ export function useBalance(params: UseBalanceParams | SkipToken) {
         : skipToken,
   });
 }
+
+export function useLinkBalance() {
+  const account = useAtomValue(accountAtom);
+  const linkAddress = '0x779877A7B0D9E8603169DdbD7836e478b4624789' as const;
+
+  return useBalance(
+    account != null ? { account, chainId: ChainId.Sepolia, address: linkAddress } : skipToken,
+  );
+}
+
+// export function useUSDCBalance() {
+//   const account = useAtomValue(accountAtom);
+//   const linkAddress = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
+
+//   return useBalance(
+//     account != null ? { account, chainId: ChainId.Sepolia, address: linkAddress } : skipToken,
+//   );
+// }
 
 export function useTransfer() {
   const queryClient = useQueryClient();
