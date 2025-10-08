@@ -1,49 +1,82 @@
 import { useQuery } from '@tanstack/react-query';
-import {
-  getAmountsIn,
-  getAmountsOut,
-  getLinkToUsdcPrice,
-  getUsdcToLinkPrice,
-} from '@/lib/apis/uniswap';
+import { ChainId } from '@/configs/chains';
+import { getAmountsIn, getAmountsOut, getBestRoute } from '@/lib/apis/uniswap';
 
-export function useLinkToUsdcPrice() {
+export function useSwapAmountsOut(
+  amountIn: string,
+  tokenInAddress: string,
+  tokenOutAddress: string,
+  chainId: ChainId = ChainId.Sepolia,
+) {
   return useQuery({
-    queryKey: ['link-usdc-price'],
-    queryFn: getLinkToUsdcPrice,
-    refetchInterval: 10000,
-  });
-}
-
-export function useUsdcToLinkPrice() {
-  return useQuery({
-    queryKey: ['usdc-link-price'],
-    queryFn: getUsdcToLinkPrice,
-    refetchInterval: 10000,
-  });
-}
-
-export function useSwapAmountsOut(amountIn: string, fromToken: 'LINK' | 'USDC') {
-  return useQuery({
-    queryKey: ['swap-amounts-out', amountIn, fromToken],
+    queryKey: ['swap-amounts-out', amountIn, tokenInAddress, tokenOutAddress, chainId],
     queryFn: async () => {
-      if (amountIn === '' || amountIn === '0') {
+      if (amountIn.length === 0 || amountIn === '' || amountIn === '0') {
         return '0';
       }
-      return getAmountsOut(amountIn, fromToken);
+      if (tokenInAddress.length === 0 || tokenOutAddress.length === 0) {
+        return '0';
+      }
+      const result = await getAmountsOut(amountIn, tokenInAddress, tokenOutAddress, chainId);
+      return result ?? '0';
     },
-    enabled: amountIn !== '' && amountIn !== '0',
+    enabled:
+      !(amountIn.length === 0) &&
+      amountIn !== '0' &&
+      !(tokenInAddress.length === 0) &&
+      !(tokenOutAddress.length === 0),
   });
 }
 
-export function useSwapAmountsIn(amountOut: string, toToken: 'LINK' | 'USDC') {
+export function useSwapAmountsIn(
+  amountOut: string,
+  tokenInAddress: string,
+  tokenOutAddress: string,
+  chainId: ChainId = ChainId.Sepolia,
+) {
   return useQuery({
-    queryKey: ['swap-amounts-in', amountOut, toToken],
+    queryKey: ['swap-amounts-in', amountOut, tokenInAddress, tokenOutAddress, chainId],
     queryFn: async () => {
-      if (amountOut === '' || amountOut === '0') {
+      if (amountOut.length === 0 || amountOut === '' || amountOut === '0') {
         return '0';
       }
-      return getAmountsIn(amountOut, toToken);
+      if (tokenInAddress.length === 0 || tokenOutAddress.length === 0) {
+        return '0';
+      }
+      const result = await getAmountsIn(amountOut, tokenInAddress, tokenOutAddress, chainId);
+      return result ?? '0';
     },
-    enabled: amountOut !== '' && amountOut !== '0',
+    enabled:
+      !(amountOut.length === 0) &&
+      amountOut !== '0' &&
+      !(tokenInAddress.length === 0) &&
+      !(tokenOutAddress.length === 0),
+  });
+}
+
+export function useBestRoute(
+  tokenInAddress: string,
+  tokenOutAddress: string,
+  amountIn: string,
+  chainId: ChainId = ChainId.Sepolia,
+) {
+  return useQuery({
+    queryKey: ['best-route', tokenInAddress, tokenOutAddress, amountIn, chainId],
+    queryFn: async () => {
+      if (
+        tokenInAddress.length === 0 ||
+        tokenOutAddress.length === 0 ||
+        amountIn.length === 0 ||
+        amountIn === '0'
+      ) {
+        return null;
+      }
+      return getBestRoute(tokenInAddress, tokenOutAddress, amountIn, chainId);
+    },
+    enabled:
+      !(tokenInAddress.length === 0) &&
+      !(tokenOutAddress.length === 0) &&
+      !(amountIn.length === 0) &&
+      amountIn !== '0',
   });
 }

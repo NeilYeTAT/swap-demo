@@ -1,87 +1,81 @@
-import { readContract } from '@wagmi/core';
-import { formatUnits, parseUnits } from 'viem';
+import { formatUnits } from 'viem';
 import { ChainId } from '@/configs/chains';
-import { LINK_Address, USDC_Address, WETH_Address } from '@/configs/core/token';
-import { uniswapV2Router02ContractAddress } from '@/configs/core/uniswap';
-import { uniswapRouterAbi } from '@/lib/abis/uniswap-router';
-import { wagmiConfig } from '@/lib/utils/wagmi';
+import { fetchTokenInfo } from '../tokens/token-fetcher';
+import { findBestPath, findBestPathForExactOutput } from './path-finder';
 
-export async function getLinkToUsdcPrice() {
-  const amountIn = parseUnits('1', 18);
-  const path = [LINK_Address, WETH_Address, USDC_Address] as const;
+export async function getAmountsOut(
+  amountIn: string,
+  tokenInAddress: string,
+  tokenOutAddress: string,
+  chainId: ChainId = ChainId.Sepolia,
+): Promise<string | null> {
+  const [tokenIn, tokenOut] = await Promise.all([
+    fetchTokenInfo(tokenInAddress, chainId),
+    fetchTokenInfo(tokenOutAddress, chainId),
+  ]);
 
-  const amounts = await readContract(wagmiConfig, {
-    address: uniswapV2Router02ContractAddress,
-    abi: uniswapRouterAbi,
-    functionName: 'getAmountsOut',
-    args: [amountIn, path],
-    chainId: ChainId.Sepolia,
-  });
+  if (tokenIn == null || tokenOut == null) return null;
 
-  const formattedUsdc = formatUnits(amounts[2], 6);
+  const route = await findBestPath(
+    tokenIn.address,
+    tokenOut.address,
+    amountIn,
+    tokenIn.decimals,
+    chainId,
+  );
 
-  return formattedUsdc;
+  if (route == null) return null;
+
+  return formatUnits(route.expectedOutput, tokenOut.decimals);
 }
 
-export async function getUsdcToLinkPrice() {
-  const amountIn = parseUnits('1', 6);
-  const path = [USDC_Address, WETH_Address, LINK_Address] as const;
+export async function getAmountsIn(
+  amountOut: string,
+  tokenInAddress: string,
+  tokenOutAddress: string,
+  chainId: ChainId = ChainId.Sepolia,
+): Promise<string | null> {
+  const [tokenIn, tokenOut] = await Promise.all([
+    fetchTokenInfo(tokenInAddress, chainId),
+    fetchTokenInfo(tokenOutAddress, chainId),
+  ]);
 
-  const amounts = await readContract(wagmiConfig, {
-    address: uniswapV2Router02ContractAddress,
-    abi: uniswapRouterAbi,
-    functionName: 'getAmountsOut',
-    args: [amountIn, path],
-    chainId: ChainId.Sepolia,
-  });
+  if (tokenIn == null || tokenOut == null) return null;
 
-  const formattedLink = formatUnits(amounts[2], 18);
+  const result = await findBestPathForExactOutput(
+    tokenIn.address,
+    tokenOut.address,
+    amountOut,
+    tokenOut.decimals,
+    tokenIn.decimals,
+    chainId,
+  );
 
-  return formattedLink;
+  if (result == null) return null;
+
+  return result.requiredInput;
 }
 
-export async function getAmountsOut(amountIn: string, fromToken: 'LINK' | 'USDC') {
-  const isLinkToUsdc = fromToken === 'LINK';
-  const path = isLinkToUsdc
-    ? ([LINK_Address, WETH_Address, USDC_Address] as const)
-    : ([USDC_Address, WETH_Address, LINK_Address] as const);
-  const inputDecimals = isLinkToUsdc ? 18 : 6;
-  const outputDecimals = isLinkToUsdc ? 6 : 18;
+export async function getBestRoute(
+  tokenInAddress: string,
+  tokenOutAddress: string,
+  amountIn: string,
+  chainId: ChainId = ChainId.Sepolia,
+) {
+  const [tokenIn, tokenOut] = await Promise.all([
+    fetchTokenInfo(tokenInAddress, chainId),
+    fetchTokenInfo(tokenOutAddress, chainId),
+  ]);
 
-  const parsedAmountIn = parseUnits(amountIn, inputDecimals);
+  if (tokenIn == null || tokenOut == null) return null;
 
-  const amounts = await readContract(wagmiConfig, {
-    address: uniswapV2Router02ContractAddress,
-    abi: uniswapRouterAbi,
-    functionName: 'getAmountsOut',
-    args: [parsedAmountIn, path],
-    chainId: ChainId.Sepolia,
-  });
+  const route = await findBestPath(
+    tokenIn.address,
+    tokenOut.address,
+    amountIn,
+    tokenIn.decimals,
+    chainId,
+  );
 
-  const formattedOutput = formatUnits(amounts[2], outputDecimals);
-
-  return formattedOutput;
-}
-
-export async function getAmountsIn(amountOut: string, toToken: 'LINK' | 'USDC') {
-  const isToUsdc = toToken === 'USDC';
-  const path = isToUsdc
-    ? ([LINK_Address, WETH_Address, USDC_Address] as const)
-    : ([USDC_Address, WETH_Address, LINK_Address] as const);
-  const outputDecimals = isToUsdc ? 6 : 18;
-  const inputDecimals = isToUsdc ? 18 : 6;
-
-  const parsedAmountOut = parseUnits(amountOut, outputDecimals);
-
-  const amounts = await readContract(wagmiConfig, {
-    address: uniswapV2Router02ContractAddress,
-    abi: uniswapRouterAbi,
-    functionName: 'getAmountsIn',
-    args: [parsedAmountOut, path],
-    chainId: ChainId.Sepolia,
-  });
-
-  const formattedInput = formatUnits(amounts[0], inputDecimals);
-
-  return formattedInput;
+  return route;
 }
