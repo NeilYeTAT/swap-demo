@@ -2,7 +2,7 @@ import type { Address } from 'viem';
 import { readContract } from '@wagmi/core';
 import { formatUnits, parseUnits } from 'viem';
 import { ChainId } from '@/configs/chains';
-import { WETH_Address } from '@/configs/core/token';
+import { commonIntermediateTokens, WETH_Address } from '@/configs/core/token';
 import { uniswapV2Router02ContractAddress } from '@/configs/core/uniswap';
 import { uniswapRouterAbi } from '@/lib/abis/uniswap-router';
 import { wagmiConfig } from '@/lib/utils/wagmi';
@@ -81,11 +81,6 @@ export async function findBestPath(
     });
   }
 
-  const commonIntermediateTokens = [
-    '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-    '0x779877A7B0D9E8603169DdbD7836e478b4624789',
-  ];
-
   for (const intermediate of commonIntermediateTokens) {
     if (intermediate !== tokenIn && intermediate !== tokenOut && intermediate !== WETH_Address) {
       const path = [tokenIn, intermediate as Address, tokenOut];
@@ -139,11 +134,6 @@ export async function findBestPathForExactOutput(
       requiredInput: wethInput,
     });
   }
-
-  const commonIntermediateTokens = [
-    '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-    '0x779877A7B0D9E8603169DdbD7836e478b4624789',
-  ];
 
   for (const intermediate of commonIntermediateTokens) {
     if (intermediate !== tokenIn && intermediate !== tokenOut && intermediate !== WETH_Address) {
