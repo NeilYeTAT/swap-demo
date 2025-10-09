@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import { ChainId } from '@/configs/chains';
 import { useTokenBalance, useTokenInfo } from '@/lib/hooks/tokens/token-balance';
-import { useSwapAmountsIn, useSwapAmountsOut, useSwapTokens } from '@/lib/hooks/uniswap';
+import { useSwapAmountsInV3, useSwapAmountsOutV3, useSwapTokensV3 } from '@/lib/hooks/uniswap-v3';
 import { accountAtom } from '@/lib/states/evm';
 import { Button } from '@/ui/shadcn/button';
 import { Input } from '@/ui/shadcn/input';
@@ -45,21 +45,21 @@ export default function Page() {
   const { data: sellTokenBalance } = useTokenBalance(sellTokenAddress, ChainId.Sepolia);
   const { data: buyTokenBalance } = useTokenBalance(buyTokenAddress, ChainId.Sepolia);
 
-  const { data: sellToOut } = useSwapAmountsOut(
+  const { data: sellToOut } = useSwapAmountsOutV3(
     activeInput === 'sell' ? sellAmount : '',
     sellTokenAddress,
     buyTokenAddress,
     ChainId.Sepolia,
   );
 
-  const { data: buyToIn } = useSwapAmountsIn(
+  const { data: buyToIn } = useSwapAmountsInV3(
     activeInput === 'buy' ? buyAmount : '',
     sellTokenAddress,
     buyTokenAddress,
     ChainId.Sepolia,
   );
 
-  const { mutate: swap, isPending, data: swapData } = useSwapTokens();
+  const { mutate: swap, isPending, data: swapData } = useSwapTokensV3();
 
   useEffect(() => {
     if (activeInput === 'sell' && sellToOut != null) {
@@ -89,7 +89,6 @@ export default function Page() {
     }
   };
 
-  // TODO: address validate?
   const handleSellTokenAddressChange = (value: string) => {
     if (isAddress(value)) {
       setSellTokenAddress(value);

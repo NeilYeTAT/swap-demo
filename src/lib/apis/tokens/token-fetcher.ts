@@ -13,6 +13,7 @@ export type TokenInfo = {
 
 const tokenCache = new Map<string, TokenInfo>();
 
+// TODO: remove chainid
 export async function fetchTokenInfo(address: string, chainId: ChainId): Promise<TokenInfo | null> {
   if (!isAddress(address)) {
     return null;
