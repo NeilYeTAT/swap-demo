@@ -11,3 +11,6 @@ export const uniswapV3FactoryContractAddress =
 
 export const uniswapV3Router02ContractAddress =
   '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E' as Address;
+
+export const uniswapV3Quoter02ContractAddress =
+  '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3' as Address;
