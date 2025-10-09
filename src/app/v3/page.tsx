@@ -24,6 +24,8 @@ const COMMON_TOKENS = [
   { address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'USDC' },
   { address: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'WETH' },
   { address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', symbol: 'UNI' },
+  { address: '0x4E9Bfb0359351BDb3fdE37C3Ba88703dBE048414', symbol: 'PPT' },
+  { address: '0x7aB1946ddAB214955Ae1Ff52806CedD2D0e1Dd45', symbol: 'TUSDT' },
 ];
 
 export default function Page() {
