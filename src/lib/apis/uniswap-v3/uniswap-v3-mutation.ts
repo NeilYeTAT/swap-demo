@@ -6,7 +6,7 @@ import { uniswapV3Router02ContractAddress } from '@/configs/core/uniswap';
 import { uniswapV3Router02Abi } from '@/lib/abis/uniswap-v3-router';
 import { wagmiConfig } from '@/lib/utils/wagmi';
 import { fetchTokenInfo } from '../tokens/token-fetcher';
-import { getBestFee } from './uniswap-v3-query';
+import { findBestPath, findBestPathForExactOutput } from './uniswap-v3-query';
 
 export async function approveTokenV3(tokenAddress: Address, amount: bigint) {
   const hash = await writeContract(wagmiConfig, {
@@ -63,27 +63,46 @@ export async function swapExactInputV3(
     await approveTokenV3(tokenIn.address, parsedAmountIn);
   }
 
-  const fee = await getBestFee(tokenIn.address, tokenOut.address, parsedAmountIn);
+  const { path, fees } = await findBestPath(tokenIn.address, tokenOut.address, parsedAmountIn);
 
   // const futureDeadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
 
-  const hash = await writeContract(wagmiConfig, {
-    address: uniswapV3Router02ContractAddress,
-    abi: uniswapV3Router02Abi,
-    functionName: 'exactInputSingle',
-    args: [
-      {
-        tokenIn: tokenIn.address,
-        tokenOut: tokenOut.address,
-        fee,
-        recipient: to,
-        amountIn: parsedAmountIn,
-        amountOutMinimum: parsedAmountOutMin,
-        sqrtPriceLimitX96: 0n,
-      },
-    ],
-    chainId,
-  });
+  let hash: `0x${string}`;
+
+  if (fees.length === 1) {
+    hash = await writeContract(wagmiConfig, {
+      address: uniswapV3Router02ContractAddress,
+      abi: uniswapV3Router02Abi,
+      functionName: 'exactInputSingle',
+      args: [
+        {
+          tokenIn: tokenIn.address,
+          tokenOut: tokenOut.address,
+          fee: fees[0],
+          recipient: to,
+          amountIn: parsedAmountIn,
+          amountOutMinimum: parsedAmountOutMin,
+          sqrtPriceLimitX96: 0n,
+        },
+      ],
+      chainId,
+    });
+  } else {
+    hash = await writeContract(wagmiConfig, {
+      address: uniswapV3Router02ContractAddress,
+      abi: uniswapV3Router02Abi,
+      functionName: 'exactInput',
+      args: [
+        {
+          path,
+          recipient: to,
+          amountIn: parsedAmountIn,
+          amountOutMinimum: parsedAmountOutMin,
+        },
+      ],
+      chainId,
+    });
+  }
 
   const receipt = await waitForTransactionReceipt(wagmiConfig, {
     hash,
@@ -119,27 +138,50 @@ export async function swapExactOutputV3(
     await approveTokenV3(tokenIn.address, parsedAmountInMax);
   }
 
-  const fee = await getBestFee(tokenIn.address, tokenOut.address, parsedAmountInMax);
+  const { path, fees } = await findBestPathForExactOutput(
+    tokenIn.address,
+    tokenOut.address,
+    parsedAmountOut,
+  );
 
   // const futureDeadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
 
-  const hash = await writeContract(wagmiConfig, {
-    address: uniswapV3Router02ContractAddress,
-    abi: uniswapV3Router02Abi,
-    functionName: 'exactOutputSingle',
-    args: [
-      {
-        tokenIn: tokenIn.address,
-        tokenOut: tokenOut.address,
-        fee,
-        recipient: to,
-        amountOut: parsedAmountOut,
-        amountInMaximum: parsedAmountInMax,
-        sqrtPriceLimitX96: 0n,
-      },
-    ],
-    chainId,
-  });
+  let hash: `0x${string}`;
+
+  if (fees.length === 1) {
+    hash = await writeContract(wagmiConfig, {
+      address: uniswapV3Router02ContractAddress,
+      abi: uniswapV3Router02Abi,
+      functionName: 'exactOutputSingle',
+      args: [
+        {
+          tokenIn: tokenIn.address,
+          tokenOut: tokenOut.address,
+          fee: fees[0],
+          recipient: to,
+          amountOut: parsedAmountOut,
+          amountInMaximum: parsedAmountInMax,
+          sqrtPriceLimitX96: 0n,
+        },
+      ],
+      chainId,
+    });
+  } else {
+    hash = await writeContract(wagmiConfig, {
+      address: uniswapV3Router02ContractAddress,
+      abi: uniswapV3Router02Abi,
+      functionName: 'exactOutput',
+      args: [
+        {
+          path,
+          recipient: to,
+          amountOut: parsedAmountOut,
+          amountInMaximum: parsedAmountInMax,
+        },
+      ],
+      chainId,
+    });
+  }
 
   const receipt = await waitForTransactionReceipt(wagmiConfig, {
     hash,
