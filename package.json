@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "pages:dev": "pnpm run pages:build && wrangler pages dev",
@@ -35,7 +35,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "ethers": "^5.8.0",
+    "ethers": "5.8.0",
     "immer": "^10.1.3",
     "jotai": "^2.15.0",
     "ky": "^1.10.0",
