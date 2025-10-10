@@ -1,7 +1,26 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { erc20Abi } from 'viem';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const tokenInAddress = searchParams.get('tokenIn');
+    const tokenOutAddress = searchParams.get('tokenOut');
+    const amountIn = searchParams.get('amountIn');
+    const recipient = searchParams.get('recipient');
+
+    if (tokenInAddress == null || tokenOutAddress == null || amountIn == null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing required parameters',
+          details: 'tokenIn, tokenOut, and amountIn are required',
+        },
+        { status: 400 },
+      );
+    }
+
     const ethers = await import('ethers');
     const smartOrderRouter = await import('@uniswap/smart-order-router');
     const sdkCore = await import('@uniswap/sdk-core');
@@ -17,20 +36,35 @@ export async function GET() {
       },
     );
 
-    const LINK = new sdkCore.Token(
+    const tokenInContract = new ethers.ethers.Contract(tokenInAddress, erc20Abi, provider);
+    const tokenOutContract = new ethers.ethers.Contract(tokenOutAddress, erc20Abi, provider);
+
+    const [tokenInDecimals, tokenInSymbol, tokenInName] = await Promise.all([
+      tokenInContract.decimals(),
+      tokenInContract.symbol(),
+      tokenInContract.name(),
+    ]);
+
+    const [tokenOutDecimals, tokenOutSymbol, tokenOutName] = await Promise.all([
+      tokenOutContract.decimals(),
+      tokenOutContract.symbol(),
+      tokenOutContract.name(),
+    ]);
+
+    const TokenIn = new sdkCore.Token(
       11155111,
-      '0x779877A7B0D9E8603169DdbD7836e478b4624789',
-      18,
-      'LINK',
-      'Chainlink token',
+      tokenInAddress,
+      tokenInDecimals,
+      tokenInSymbol,
+      tokenInName,
     );
 
-    const USDC = new sdkCore.Token(
+    const TokenOut = new sdkCore.Token(
       11155111,
-      '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-      6,
-      'USDC',
-      'USDC',
+      tokenOutAddress,
+      tokenOutDecimals,
+      tokenOutSymbol,
+      tokenOutName,
     );
 
     const router = new smartOrderRouter.AlphaRouter({
@@ -39,17 +73,18 @@ export async function GET() {
     });
 
     const swapOptions = {
-      recipient: '0xeDC7B74Ccf1a1DF2A4EE00349b0Fe582ccE998d6',
+      recipient: recipient,
       slippageTolerance: new sdkCore.Percent(50, 10_000),
       deadline: Math.floor(Date.now() / 1000 + 1800),
       type: smartOrderRouter.SwapType.SWAP_ROUTER_02,
     };
 
-    const amountIn = sdkCore.CurrencyAmount.fromRawAmount(LINK, '1000000000000000000');
+    const parsedAmountIn = ethers.ethers.utils.parseUnits(amountIn, tokenInDecimals);
+    const currencyAmount = sdkCore.CurrencyAmount.fromRawAmount(TokenIn, parsedAmountIn.toString());
 
     const route = await router.route(
-      amountIn,
-      USDC,
+      currencyAmount,
+      TokenOut,
       sdkCore.TradeType.EXACT_INPUT,
       swapOptions as Parameters<typeof router.route>[3],
     );

@@ -1,6 +1,8 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useAtomValue } from 'jotai';
+import ky from 'ky';
 import { ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -9,7 +11,7 @@ import { z } from 'zod';
 import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import { ChainId } from '@/configs/chains';
 import { useTokenBalance, useTokenInfo } from '@/lib/hooks/tokens/token-balance';
-import { useSwapAmountsInV3, useSwapAmountsOutV3, useSwapTokensV3 } from '@/lib/hooks/uniswap-v3';
+import { useSwapTokensV3 } from '@/lib/hooks/uniswap-v3';
 import { accountAtom } from '@/lib/states/evm';
 import { Button } from '@/ui/shadcn/button';
 import { Input } from '@/ui/shadcn/input';
@@ -28,6 +30,23 @@ const COMMON_TOKENS = [
   { address: '0x7aB1946ddAB214955Ae1Ff52806CedD2D0e1Dd45', symbol: 'TUSDT' },
 ];
 
+interface RouteResponse {
+  success: boolean;
+  quote?: string;
+  quoteCurrency?: string;
+  estimatedGasUsed?: string;
+  inputAmount?: string;
+  outputAmount?: string;
+  executionPrice?: string;
+  path?: string[];
+  methodParameters?: {
+    calldata: string;
+    value: string;
+    to: string;
+  };
+  error?: string;
+}
+
 export default function Page() {
   const account = useAtomValue(accountAtom);
 
@@ -37,7 +56,7 @@ export default function Page() {
   const [buyTokenAddress, setBuyTokenAddress] = useState<Address>(
     '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
   );
-  const [sellAmount, setSellAmount] = useState('0');
+  const [sellAmount, setSellAmount] = useState('1');
   const [buyAmount, setBuyAmount] = useState('0');
   const [activeInput, setActiveInput] = useState<'sell' | 'buy'>('sell');
   const [slippage, setSlippage] = useState('0.50');
@@ -47,33 +66,30 @@ export default function Page() {
   const { data: sellTokenBalance } = useTokenBalance(sellTokenAddress, ChainId.Sepolia);
   const { data: buyTokenBalance } = useTokenBalance(buyTokenAddress, ChainId.Sepolia);
 
-  const { data: sellToOut } = useSwapAmountsOutV3(
-    activeInput === 'sell' ? sellAmount : '',
-    sellTokenAddress,
-    buyTokenAddress,
-    ChainId.Sepolia,
-  );
-
-  const { data: buyToIn } = useSwapAmountsInV3(
-    activeInput === 'buy' ? buyAmount : '',
-    sellTokenAddress,
-    buyTokenAddress,
-    ChainId.Sepolia,
-  );
+  const { data: routeData, isLoading: isRouteLoading } = useQuery<RouteResponse>({
+    queryKey: ['uniswap-v3-route', sellTokenAddress, buyTokenAddress, sellAmount, account],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        tokenIn: sellTokenAddress,
+        tokenOut: buyTokenAddress,
+        amountIn: sellAmount,
+        recipient: account as string,
+      });
+      const response = await ky.get(`/api/uniswap-v3?${params}`).json<RouteResponse>();
+      return response;
+    },
+    enabled: sellAmount !== '' && sellAmount !== '0' && activeInput === 'sell' && account != null,
+    refetchInterval: 10000,
+    staleTime: 5000,
+  });
 
   const { mutate: swap, isPending, data: swapData } = useSwapTokensV3();
 
   useEffect(() => {
-    if (activeInput === 'sell' && sellToOut != null) {
-      setBuyAmount(sellToOut);
+    if (activeInput === 'sell' && routeData?.success === true && routeData.outputAmount != null) {
+      setBuyAmount(routeData.outputAmount);
     }
-  }, [activeInput, sellToOut]);
-
-  useEffect(() => {
-    if (activeInput === 'buy' && buyToIn != null) {
-      setSellAmount(buyToIn);
-    }
-  }, [activeInput, buyToIn]);
+  }, [activeInput, routeData]);
 
   const handleSellInputChange = (value: string) => {
     const result = numberInputSchema.safeParse(value);
@@ -95,44 +111,39 @@ export default function Page() {
     if (isAddress(value)) {
       setSellTokenAddress(value);
     }
-    setSellAmount('');
-    setBuyAmount('');
+    setSellAmount('1');
+    setBuyAmount('0');
   };
 
   const handleBuyTokenAddressChange = (value: string) => {
     if (isAddress(value)) {
       setBuyTokenAddress(value);
     }
-    setSellAmount('');
-    setBuyAmount('');
+    setSellAmount('1');
+    setBuyAmount('0');
   };
 
   const handleSwitch = () => {
     const temp = sellTokenAddress;
     setSellTokenAddress(buyTokenAddress);
     setBuyTokenAddress(temp);
-    setSellAmount('');
-    setBuyAmount('');
+    setSellAmount('1');
+    setBuyAmount('0');
   };
 
   const handleSwap = () => {
-    const finalSellAmount = activeInput === 'sell' ? sellAmount : buyToIn;
-    const finalBuyAmount = activeInput === 'sell' ? sellToOut : buyAmount;
-
     if (
-      finalSellAmount != null &&
-      finalBuyAmount != null &&
-      finalSellAmount !== '' &&
-      finalBuyAmount !== '' &&
-      sellTokenAddress.length > 0 &&
-      buyTokenAddress.length > 0
+      routeData?.success === true &&
+      routeData.outputAmount != null &&
+      sellAmount !== '' &&
+      sellAmount !== '0'
     ) {
       const slippageValue = parseFloat(slippage) / 100;
       const slippageTolerance = 1 - slippageValue;
 
       swap({
-        amountIn: finalSellAmount,
-        amountOutMin: finalBuyAmount,
+        amountIn: sellAmount,
+        amountOutMin: routeData.outputAmount,
         tokenInAddress: sellTokenAddress,
         tokenOutAddress: buyTokenAddress,
         slippage: slippageTolerance,
@@ -145,32 +156,33 @@ export default function Page() {
       return true;
     }
 
-    const finalSellAmount = activeInput === 'sell' ? sellAmount : buyToIn;
-    const finalBuyAmount = activeInput === 'sell' ? sellToOut : buyAmount;
-
-    if (finalSellAmount == null || finalBuyAmount == null) return true;
-    if (finalSellAmount === '' || finalSellAmount === '0') return true;
-    if (finalBuyAmount === '' || finalBuyAmount === '0') return true;
+    if (routeData?.success !== true || routeData.outputAmount == null) return true;
+    if (sellAmount === '' || sellAmount === '0') return true;
 
     const balance = parseFloat(sellTokenBalance ?? '0');
-    const amount = parseFloat(finalSellAmount);
+    const amount = parseFloat(sellAmount);
     return amount > balance;
   };
 
   const getButtonText = () => {
     if (account == null) return 'Connect Wallet';
     if (isPending === true) return 'Swapping...';
+    if (isRouteLoading) return 'Fetching Price...';
     if (sellTokenInfo == null || buyTokenInfo == null) return 'Invalid token address';
+    if (routeData?.success === false && routeData.error != null) return routeData.error;
+    if (routeData?.success !== true) return 'No route found';
 
-    const finalSellAmount = activeInput === 'sell' ? sellAmount : buyToIn;
-    if (finalSellAmount != null) {
-      const balance = parseFloat(sellTokenBalance ?? '0');
-      const amount = parseFloat(finalSellAmount);
-      if (amount > balance) return `Insufficient ${sellTokenInfo?.symbol ?? 'token'} balance`;
-    }
+    const balance = parseFloat(sellTokenBalance ?? '0');
+    const amount = parseFloat(sellAmount);
+    if (amount > balance) return `Insufficient ${sellTokenInfo?.symbol ?? 'token'} balance`;
 
     return 'Swap';
   };
+
+  const estimatedGasUSD =
+    routeData?.estimatedGasUsed != null
+      ? (parseFloat(routeData.estimatedGasUsed) * 0.000000001 * 2500).toFixed(2)
+      : '0.00';
 
   return (
     <div className="mx-auto flex flex-1 flex-col">
@@ -234,7 +246,7 @@ export default function Page() {
               placeholder="0"
               value={buyAmount}
               onChange={e => handleBuyInputChange(e.target.value)}
-              disabled={isPending}
+              disabled={true}
             />
             <div className="min-w-[80px] text-right">{buyTokenInfo?.symbol ?? '---'}</div>
           </div>
@@ -265,18 +277,41 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>最低收到</span>
-            <span>
-              {buyAmount !== '' &&
-              slippage !== '' &&
-              !isNaN(parseFloat(buyAmount)) &&
-              !isNaN(parseFloat(slippage))
-                ? (parseFloat(buyAmount) * (1 - parseFloat(slippage) / 100)).toFixed(6)
-                : '0.000000'}{' '}
-              {buyTokenInfo?.symbol ?? '---'}
-            </span>
-          </div>
+          {routeData?.success === true && (
+            <>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>兑换价格</span>
+                <span>
+                  1 {sellTokenInfo?.symbol} ≈ {routeData.executionPrice} {buyTokenInfo?.symbol}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>预估 Gas 费</span>
+                <span>
+                  {routeData.estimatedGasUsed} gas ≈ ${estimatedGasUSD}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>最低收到</span>
+                <span>
+                  {routeData.outputAmount != null && slippage !== ''
+                    ? (
+                        parseFloat(routeData.outputAmount) *
+                        (1 - parseFloat(slippage) / 100)
+                      ).toFixed(6)
+                    : '0.000000'}{' '}
+                  {buyTokenInfo?.symbol ?? '---'}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>路由路径</span>
+                <span className="text-right">{routeData.path?.length} 个代币</span>
+              </div>
+            </>
+          )}
 
           <Button
             onClick={handleSwap}
