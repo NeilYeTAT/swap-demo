@@ -173,6 +173,9 @@ export default function Page() {
 
   return (
     <div className="mx-auto flex flex-1 flex-col">
+      <h2 className="mx-auto mt-auto cursor-pointer text-4xl underline">
+        <Link href={'/v3'}>Go to V3</Link>
+      </h2>
       <main className="m-auto flex w-[580px] flex-col justify-between rounded-xl border-[0.5px] p-4">
         <div className="h-[160px]">
           <header className="mb-2">出售</header>
