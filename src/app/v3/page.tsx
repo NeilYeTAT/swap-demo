@@ -67,18 +67,31 @@ export default function Page() {
   const { data: buyTokenBalance } = useTokenBalance(buyTokenAddress, ChainId.Sepolia);
 
   const { data: routeData, isLoading: isRouteLoading } = useQuery<RouteResponse>({
-    queryKey: ['uniswap-v3-route', sellTokenAddress, buyTokenAddress, sellAmount, account],
+    queryKey: [
+      'uniswap-v3-route',
+      sellTokenAddress,
+      buyTokenAddress,
+      sellAmount,
+      slippage,
+      account,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         tokenIn: sellTokenAddress,
         tokenOut: buyTokenAddress,
         amountIn: sellAmount,
+        slippage: slippage,
         recipient: account as string,
       });
       const response = await ky.get(`/api/uniswap-v3?${params}`).json<RouteResponse>();
       return response;
     },
-    enabled: sellAmount !== '' && sellAmount !== '0' && activeInput === 'sell' && account != null,
+    enabled:
+      sellAmount !== '' &&
+      sellAmount !== '0' &&
+      slippage !== '' &&
+      activeInput === 'sell' &&
+      account != null,
     refetchInterval: 10000,
     staleTime: 5000,
   });

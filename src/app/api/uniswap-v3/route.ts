@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const tokenInAddress = searchParams.get('tokenIn');
     const tokenOutAddress = searchParams.get('tokenOut');
     const amountIn = searchParams.get('amountIn');
+    const slippage = searchParams.get('slippage');
     const recipient = searchParams.get('recipient');
 
     if (tokenInAddress == null || tokenOutAddress == null || amountIn == null) {
@@ -72,9 +73,13 @@ export async function GET(request: NextRequest) {
       provider,
     });
 
+    const slippageValue = slippage != null ? parseFloat(slippage) : 0.5;
+    const slippageNumerator = Math.floor(slippageValue * 100);
+    const slippageDenominator = 10_000;
+
     const swapOptions = {
       recipient: recipient,
-      slippageTolerance: new sdkCore.Percent(50, 10_000),
+      slippageTolerance: new sdkCore.Percent(slippageNumerator, slippageDenominator),
       deadline: Math.floor(Date.now() / 1000 + 1800),
       type: smartOrderRouter.SwapType.SWAP_ROUTER_02,
       enableUniversalRouter: false,
