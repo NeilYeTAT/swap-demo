@@ -7,16 +7,15 @@ import {
 } from '@wagmi/core';
 import { erc20Abi, parseUnits } from 'viem';
 import { ChainId } from '@/configs/chains';
-import { uniswapV3Router02ContractAddress } from '@/configs/core/uniswap';
 import { wagmiConfig } from '@/lib/utils/wagmi';
 import { fetchTokenInfo } from '../tokens/token-fetcher';
 
-export async function approveTokenV3(tokenAddress: Address, amount: bigint) {
+export async function approveTokenV3(tokenAddress: Address, amount: bigint, to: Address) {
   const hash = await writeContract(wagmiConfig, {
     address: tokenAddress,
     abi: erc20Abi,
     functionName: 'approve',
-    args: [uniswapV3Router02ContractAddress, amount],
+    args: [to, amount],
     chainId: ChainId.Sepolia,
   });
 
@@ -28,12 +27,12 @@ export async function approveTokenV3(tokenAddress: Address, amount: bigint) {
   return hash;
 }
 
-export async function checkAllowanceV3(tokenAddress: Address, owner: Address) {
+export async function checkAllowanceV3(tokenAddress: Address, owner: Address, to: Address) {
   const allowance = await readContract(wagmiConfig, {
     address: tokenAddress,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: [owner, uniswapV3Router02ContractAddress],
+    args: [owner, to],
     chainId: ChainId.Sepolia,
   });
 
@@ -62,10 +61,10 @@ export async function swapExactInputV3(
 
   const parsedAmountIn = parseUnits(amountIn, tokenIn.decimals);
 
-  const allowance = await checkAllowanceV3(tokenIn.address, userAddress);
+  const allowance = await checkAllowanceV3(tokenIn.address, userAddress, to);
 
   if (allowance < parsedAmountIn) {
-    await approveTokenV3(tokenIn.address, parsedAmountIn);
+    await approveTokenV3(tokenIn.address, parsedAmountIn, to);
   }
 
   // *

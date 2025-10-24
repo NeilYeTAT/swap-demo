@@ -5,13 +5,13 @@ import { useAtomValue } from 'jotai';
 import ky from 'ky';
 import { ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { type Address, isAddress } from 'viem';
 import { z } from 'zod';
 import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import { ChainId } from '@/configs/chains';
 import { useTokenBalance, useTokenInfo } from '@/lib/hooks/tokens/token-balance';
-import { useSwapTokensV3 } from '@/lib/hooks/uniswap-v3';
+import { useUnifiedSwap } from '@/lib/hooks/uniswap';
 import { accountAtom } from '@/lib/states/evm';
 import { Button } from '@/ui/shadcn/button';
 import { Input } from '@/ui/shadcn/input';
@@ -32,6 +32,7 @@ const COMMON_TOKENS = [
 
 interface RouteResponse {
   success: boolean;
+  protocol?: 'V2' | 'V3';
   quote?: string;
   quoteCurrency?: string;
   estimatedGasUsed?: string;
@@ -44,6 +45,7 @@ interface RouteResponse {
     value: string;
     to: string;
   };
+  routePath?: string[];
   error?: string;
 }
 
@@ -61,42 +63,103 @@ export default function Page() {
   const [activeInput, setActiveInput] = useState<'sell' | 'buy'>('sell');
   const [slippage, setSlippage] = useState('0.50');
 
+  // 防抖相关状态
+  const [debouncedSellAmount, setDebouncedSellAmount] = useState('1');
+  const [debouncedSlippage, setDebouncedSlippage] = useState('0.50');
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const abortControllerRef = useRef<AbortController | undefined>(undefined);
+
   const { data: sellTokenInfo } = useTokenInfo(sellTokenAddress, ChainId.Sepolia);
   const { data: buyTokenInfo } = useTokenInfo(buyTokenAddress, ChainId.Sepolia);
   const { data: sellTokenBalance } = useTokenBalance(sellTokenAddress, ChainId.Sepolia);
   const { data: buyTokenBalance } = useTokenBalance(buyTokenAddress, ChainId.Sepolia);
 
+  // 防抖函数
+  const debouncedUpdateValues = useCallback((amount: string, slippageVal: string) => {
+    // 清除之前的定时器
+    if (debounceTimeoutRef.current != null) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // 设置新的定时器
+    debounceTimeoutRef.current = setTimeout(() => {
+      setDebouncedSellAmount(amount);
+      setDebouncedSlippage(slippageVal);
+    }, 500); // 500ms 防抖延迟
+  }, []);
+
+  // 监听输入变化，触发防抖
+  useEffect(() => {
+    if (activeInput === 'sell') {
+      debouncedUpdateValues(sellAmount, slippage);
+    }
+  }, [sellAmount, slippage, activeInput, debouncedUpdateValues]);
+
+  // 清理函数
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current != null) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      if (abortControllerRef.current != null) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const { data: routeData, isLoading: isRouteLoading } = useQuery<RouteResponse>({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: [
       'uniswap-v3-route',
       sellTokenAddress,
       buyTokenAddress,
-      sellAmount,
-      slippage,
+      debouncedSellAmount,
+      debouncedSlippage,
       account,
     ],
     queryFn: async () => {
+      // 取消之前的请求
+      if (abortControllerRef.current != null) {
+        abortControllerRef.current.abort();
+      }
+
+      // 创建新的 AbortController
+      abortControllerRef.current = new AbortController();
+
       const params = new URLSearchParams({
         tokenIn: sellTokenAddress,
         tokenOut: buyTokenAddress,
-        amountIn: sellAmount,
-        slippage: slippage,
+        amountIn: debouncedSellAmount,
+        slippage: debouncedSlippage,
         recipient: account as string,
       });
-      const response = await ky.get(`/api/uniswap-v3?${params}`).json<RouteResponse>();
+
+      const response = await ky
+        .get(`/api/uniswap-v3?${params}`, {
+          signal: abortControllerRef.current.signal,
+        })
+        .json<RouteResponse>();
+
       return response;
     },
     enabled:
-      sellAmount !== '' &&
-      sellAmount !== '0' &&
-      slippage !== '' &&
+      debouncedSellAmount !== '' &&
+      debouncedSellAmount !== '0' &&
+      debouncedSlippage !== '' &&
       activeInput === 'sell' &&
       account != null,
     refetchInterval: 10000,
     staleTime: 5000,
+    retry: (failureCount, error) => {
+      // 如果是因为请求被取消，则不重试
+      if (error.name === 'AbortError') {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
-  const { mutate: swap, isPending, data: swapData } = useSwapTokensV3();
+  const { mutate: swap, isPending, data: swapData } = useUnifiedSwap();
 
   useEffect(() => {
     if (activeInput === 'sell' && routeData?.success === true && routeData.outputAmount != null) {
@@ -154,16 +217,28 @@ export default function Page() {
       const slippageValue = parseFloat(slippage) / 100;
       const slippageTolerance = 1 - slippageValue;
 
-      swap({
+      const baseParams = {
         amountIn: sellAmount,
         amountOutMin: routeData.outputAmount,
         tokenInAddress: sellTokenAddress,
         tokenOutAddress: buyTokenAddress,
         slippage: slippageTolerance,
-        calldata: routeData.methodParameters!.calldata as `0x${string}`,
-        value: routeData.methodParameters!.value as `0x${string}`,
-        to: routeData.methodParameters!.to as Address,
-      });
+      };
+
+      if (routeData.protocol === 'V2') {
+        swap({
+          protocol: 'V2',
+          ...baseParams,
+        });
+      } else {
+        swap({
+          protocol: 'V3',
+          ...baseParams,
+          calldata: routeData.methodParameters!.calldata as `0x${string}`,
+          value: routeData.methodParameters!.value as `0x${string}`,
+          to: routeData.methodParameters!.to as Address,
+        });
+      }
     }
   };
 
@@ -295,6 +370,11 @@ export default function Page() {
 
           {routeData?.success === true && (
             <>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>路由协议</span>
+                <span>{routeData.protocol ?? 'V3'}</span>
+              </div>
+
               <div className="flex justify-between text-sm text-gray-600">
                 <span>兑换价格</span>
                 <span>

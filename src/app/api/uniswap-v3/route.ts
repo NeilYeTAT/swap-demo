@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       slippageTolerance: new sdkCore.Percent(slippageNumerator, slippageDenominator),
       deadline: Math.floor(Date.now() / 1000 + 1800),
       type: smartOrderRouter.SwapType.SWAP_ROUTER_02,
-      enableUniversalRouter: false,
+      enableUniversalRouter: true,
     };
 
     const parsedAmountIn = ethers.ethers.utils.parseUnits(amountIn, tokenInDecimals);
@@ -94,6 +94,10 @@ export async function GET(request: NextRequest) {
       sdkCore.TradeType.EXACT_INPUT,
       swapOptions as Parameters<typeof router.route>[3],
     );
+    // console.log('~~~~~~~~~~~~~~~~~~~~~~~');
+    // // console.log(JSON.stringify(route, null, 2), 'what route?');
+    // console.log(route, 'what route?');
+    // console.log('-----------------------');
 
     if (route == null) {
       return NextResponse.json(
@@ -105,6 +109,9 @@ export async function GET(request: NextRequest) {
         { status: 404 },
       );
     }
+
+    const firstRoute = route.route[0];
+    const protocol = (firstRoute?.protocol as string) ?? 'V3';
 
     const pathArray: string[] = [];
     route.route.forEach(r => {
@@ -120,6 +127,7 @@ export async function GET(request: NextRequest) {
 
     const result = {
       success: true,
+      protocol,
       quote: route.quote.toExact(),
       quoteCurrency: route.quote.currency.symbol,
       estimatedGasUsed: route.estimatedGasUsed.toString(),
@@ -127,15 +135,21 @@ export async function GET(request: NextRequest) {
       outputAmount: route.trade.outputAmount.toExact(),
       executionPrice: route.trade.executionPrice.toSignificant(6),
       path: pathArray,
-      methodParameters:
-        route.methodParameters != null
-          ? {
-              calldata: route.methodParameters.calldata,
-              value: route.methodParameters.value,
-              to: route.methodParameters.to,
-            }
-          : null,
     };
+
+    if (protocol === 'V3' && route.methodParameters != null) {
+      Object.assign(result, {
+        methodParameters: {
+          calldata: route.methodParameters.calldata,
+          value: route.methodParameters.value,
+          to: route.methodParameters.to,
+        },
+      });
+    } else {
+      Object.assign(result, {
+        routePath: pathArray,
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error) {
