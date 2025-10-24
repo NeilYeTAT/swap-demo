@@ -15,6 +15,7 @@ export interface UnifiedSwapParams {
   tokenOutAddress: Address;
   slippage?: number;
   chainId?: ChainId;
+  path?: Address[];
   calldata?: `0x${string}`;
   value?: `0x${string}`;
   to?: Address;
@@ -40,6 +41,7 @@ export function useUnifiedSwap() {
           tokenOutAddress: params.tokenOutAddress,
           slippage: params.slippage,
           chainId: params.chainId,
+          path: params.path,
         });
       } else {
         return swapV3.mutateAsync({

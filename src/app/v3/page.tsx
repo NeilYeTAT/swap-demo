@@ -63,7 +63,7 @@ export default function Page() {
   const [activeInput, setActiveInput] = useState<'sell' | 'buy'>('sell');
   const [slippage, setSlippage] = useState('0.50');
 
-  // 防抖相关状态
+  // * debounce
   const [debouncedSellAmount, setDebouncedSellAmount] = useState('1');
   const [debouncedSlippage, setDebouncedSlippage] = useState('0.50');
   const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -82,7 +82,7 @@ export default function Page() {
     debounceTimeoutRef.current = setTimeout(() => {
       setDebouncedSellAmount(amount);
       setDebouncedSlippage(slippageVal);
-    }, 500); // 500ms 防抖延迟
+    }, 500);
   }, []);
 
   useEffect(() => {
@@ -221,6 +221,7 @@ export default function Page() {
         swap({
           protocol: 'V2',
           ...baseParams,
+          path: (routeData.routePath ?? routeData.path ?? []) as Address[],
         });
       } else {
         swap({

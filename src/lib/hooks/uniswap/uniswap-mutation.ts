@@ -18,6 +18,7 @@ export function useSwapTokens() {
       tokenOutAddress,
       slippage = 0.95,
       chainId = ChainId.Sepolia,
+      path,
     }: {
       amountIn: string;
       amountOutMin: string;
@@ -25,6 +26,7 @@ export function useSwapTokens() {
       tokenOutAddress: Address;
       slippage?: number;
       chainId?: ChainId;
+      path?: Address[];
     }) => {
       if (account == null) {
         return;
@@ -39,6 +41,7 @@ export function useSwapTokens() {
         tokenOutAddress,
         account,
         chainId,
+        path,
       );
     },
     onSuccess: () => {

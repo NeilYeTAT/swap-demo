@@ -6,7 +6,6 @@ import { uniswapV2Router02ContractAddress } from '@/configs/core/uniswap';
 import { uniswapRouterAbi } from '@/lib/abis/uniswap-router';
 import { wagmiConfig } from '@/lib/utils/wagmi';
 import { fetchTokenInfo } from '../tokens/token-fetcher';
-import { findBestPath } from './path-finder';
 
 export async function approveToken(tokenAddress: Address, amount: bigint) {
   const hash = await writeContract(wagmiConfig, {
@@ -44,6 +43,7 @@ export async function swapTokens(
   tokenOutAddress: string,
   to: Address,
   chainId: ChainId = ChainId.Sepolia,
+  path?: Address[],
 ) {
   const [tokenIn, tokenOut] = await Promise.all([
     fetchTokenInfo(tokenInAddress, chainId),
@@ -54,16 +54,8 @@ export async function swapTokens(
     throw new Error('Invalid token address');
   }
 
-  const route = await findBestPath(
-    tokenIn.address,
-    tokenOut.address,
-    amountIn,
-    tokenIn.decimals,
-    chainId,
-  );
-
-  if (route == null) {
-    throw new Error('No available route found for swap');
+  if (path == null || path.length === 0) {
+    throw new Error('No route path provided');
   }
 
   const parsedAmountIn = parseUnits(amountIn, tokenIn.decimals);
@@ -81,7 +73,7 @@ export async function swapTokens(
     address: uniswapV2Router02ContractAddress,
     abi: uniswapRouterAbi,
     functionName: 'swapExactTokensForTokens',
-    args: [parsedAmountIn, parsedAmountOutMin, route.path, to, futureDeadline],
+    args: [parsedAmountIn, parsedAmountOutMin, path, to, futureDeadline],
     chainId,
   });
 
@@ -100,6 +92,7 @@ export async function swapTokensForExactTokens(
   tokenOutAddress: string,
   to: Address,
   chainId: ChainId = ChainId.Sepolia,
+  path?: Address[],
 ) {
   const [tokenIn, tokenOut] = await Promise.all([
     fetchTokenInfo(tokenInAddress, chainId),
@@ -110,16 +103,8 @@ export async function swapTokensForExactTokens(
     throw new Error('Invalid token address');
   }
 
-  const route = await findBestPath(
-    tokenIn.address,
-    tokenOut.address,
-    amountInMax,
-    tokenIn.decimals,
-    chainId,
-  );
-
-  if (route == null) {
-    throw new Error('No available route found for swap');
+  if (path == null || path.length === 0) {
+    throw new Error('No route path provided');
   }
 
   const parsedAmountOut = parseUnits(amountOut, tokenOut.decimals);
@@ -137,7 +122,7 @@ export async function swapTokensForExactTokens(
     address: uniswapV2Router02ContractAddress,
     abi: uniswapRouterAbi,
     functionName: 'swapTokensForExactTokens',
-    args: [parsedAmountOut, parsedAmountInMax, route.path, to, futureDeadline],
+    args: [parsedAmountOut, parsedAmountInMax, path, to, futureDeadline],
     chainId,
   });
 
