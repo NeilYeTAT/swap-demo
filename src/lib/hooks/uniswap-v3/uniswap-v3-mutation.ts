@@ -13,10 +13,8 @@ export function useSwapTokensV3() {
   return useMutation({
     mutationFn: async ({
       amountIn,
-      amountOutMin,
       tokenInAddress,
       tokenOutAddress,
-      slippage = 0.95,
       chainId = ChainId.Sepolia,
       calldata,
       value,
@@ -36,19 +34,7 @@ export function useSwapTokensV3() {
         return;
       }
 
-      const adjustedAmountOutMin = (parseFloat(amountOutMin) * slippage).toString();
-
-      return swapTokensV3(
-        amountIn,
-        adjustedAmountOutMin,
-        tokenInAddress,
-        tokenOutAddress,
-        // account,
-        chainId,
-        calldata,
-        value,
-        to,
-      );
+      return swapTokensV3(amountIn, tokenInAddress, tokenOutAddress, chainId, calldata, value, to);
     },
     onSuccess: () => {
       toast.success('Swap successful!');

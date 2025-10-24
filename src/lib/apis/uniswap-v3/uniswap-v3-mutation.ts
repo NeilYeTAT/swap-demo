@@ -44,7 +44,7 @@ export async function checkAllowanceV3(tokenAddress: Address, owner: Address) {
 
 export async function swapExactInputV3(
   amountIn: string,
-  amountOutMin: string,
+  // amountOutMin: string,
   tokenInAddress: string,
   tokenOutAddress: string,
   chainId: ChainId = ChainId.Sepolia,
@@ -171,7 +171,7 @@ export async function swapExactOutputV3(
 
 export async function swapTokensV3(
   amountIn: string,
-  amountOutMin: string,
+  // amountOutMin: string,
   tokenInAddress: string,
   tokenOutAddress: string,
   chainId: ChainId = ChainId.Sepolia,
@@ -181,7 +181,7 @@ export async function swapTokensV3(
 ) {
   return swapExactInputV3(
     amountIn,
-    amountOutMin,
+    // amountOutMin,
     tokenInAddress,
     tokenOutAddress,
     chainId,
