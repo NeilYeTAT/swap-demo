@@ -56,12 +56,3 @@ export async function fetchTokenInfo(address: string, chainId: ChainId): Promise
   tokenCache.set(cacheKey, tokenInfo);
   return tokenInfo;
 }
-
-export function getTokenFromCache(address: string, chainId: ChainId): TokenInfo | undefined {
-  const cacheKey = `${chainId}-${address.toLowerCase()}`;
-  return tokenCache.get(cacheKey);
-}
-
-export function clearTokenCache(): void {
-  tokenCache.clear();
-}
