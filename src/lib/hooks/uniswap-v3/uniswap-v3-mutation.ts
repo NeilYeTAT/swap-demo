@@ -34,7 +34,16 @@ export function useSwapTokensV3() {
         return;
       }
 
-      return swapTokensV3(amountIn, tokenInAddress, tokenOutAddress, chainId, calldata, value, to);
+      return swapTokensV3(
+        amountIn,
+        tokenInAddress,
+        tokenOutAddress,
+        account,
+        chainId,
+        calldata,
+        value,
+        to,
+      );
     },
     onSuccess: () => {
       toast.success('Swap successful!');

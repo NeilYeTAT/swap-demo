@@ -45,6 +45,7 @@ export async function swapExactInputV3(
   // amountOutMin: string,
   tokenInAddress: string,
   tokenOutAddress: string,
+  userAddress: Address,
   chainId: ChainId = ChainId.Sepolia,
   calldata: `0x${string}`,
   value: `0x${string}`,
@@ -61,7 +62,7 @@ export async function swapExactInputV3(
 
   const parsedAmountIn = parseUnits(amountIn, tokenIn.decimals);
 
-  const allowance = await checkAllowanceV3(tokenIn.address, to);
+  const allowance = await checkAllowanceV3(tokenIn.address, userAddress);
 
   if (allowance < parsedAmountIn) {
     await approveTokenV3(tokenIn.address, parsedAmountIn);
@@ -93,6 +94,7 @@ export async function swapTokensV3(
   // amountOutMin: string,
   tokenInAddress: string,
   tokenOutAddress: string,
+  userAddress: Address,
   chainId: ChainId = ChainId.Sepolia,
   calldata: `0x${string}`,
   value: `0x${string}`,
@@ -103,6 +105,7 @@ export async function swapTokensV3(
     // amountOutMin,
     tokenInAddress,
     tokenOutAddress,
+    userAddress,
     chainId,
     calldata,
     value,
