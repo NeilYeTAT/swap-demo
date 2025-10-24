@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
       slippageTolerance: new sdkCore.Percent(50, 10_000),
       deadline: Math.floor(Date.now() / 1000 + 1800),
       type: smartOrderRouter.SwapType.SWAP_ROUTER_02,
+      enableUniversalRouter: false,
     };
 
     const parsedAmountIn = ethers.ethers.utils.parseUnits(amountIn, tokenInDecimals);

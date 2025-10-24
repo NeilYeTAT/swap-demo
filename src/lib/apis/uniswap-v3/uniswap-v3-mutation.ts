@@ -1,12 +1,17 @@
 import type { Address } from 'viem';
-import { readContract, waitForTransactionReceipt, writeContract } from '@wagmi/core';
+import {
+  readContract,
+  sendTransaction,
+  waitForTransactionReceipt,
+  writeContract,
+} from '@wagmi/core';
 import { erc20Abi, parseUnits } from 'viem';
 import { ChainId } from '@/configs/chains';
 import { uniswapV3Router02ContractAddress } from '@/configs/core/uniswap';
 import { uniswapV3Router02Abi } from '@/lib/abis/uniswap-v3-router';
 import { wagmiConfig } from '@/lib/utils/wagmi';
 import { fetchTokenInfo } from '../tokens/token-fetcher';
-import { findBestPath, findBestPathForExactOutput } from './uniswap-v3-query';
+import { findBestPathForExactOutput } from './uniswap-v3-query';
 
 export async function approveTokenV3(tokenAddress: Address, amount: bigint) {
   const hash = await writeContract(wagmiConfig, {
@@ -42,8 +47,10 @@ export async function swapExactInputV3(
   amountOutMin: string,
   tokenInAddress: string,
   tokenOutAddress: string,
-  to: Address,
   chainId: ChainId = ChainId.Sepolia,
+  calldata: `0x${string}`,
+  value: `0x${string}`,
+  to: Address,
 ) {
   const [tokenIn, tokenOut] = await Promise.all([
     fetchTokenInfo(tokenInAddress, chainId),
@@ -55,7 +62,6 @@ export async function swapExactInputV3(
   }
 
   const parsedAmountIn = parseUnits(amountIn, tokenIn.decimals);
-  const parsedAmountOutMin = parseUnits(amountOutMin, tokenOut.decimals);
 
   const allowance = await checkAllowanceV3(tokenIn.address, to);
 
@@ -63,46 +69,18 @@ export async function swapExactInputV3(
     await approveTokenV3(tokenIn.address, parsedAmountIn);
   }
 
-  const { path, fees } = await findBestPath(tokenIn.address, tokenOut.address, parsedAmountIn);
+  // *
+  // const MAX_FEE_PER_GAS = 100000000000n;
+  // const MAX_PRIORITY_FEE_PER_GAS = 100000000000n;
 
-  // const futureDeadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
-
-  let hash: `0x${string}`;
-
-  if (fees.length === 1) {
-    hash = await writeContract(wagmiConfig, {
-      address: uniswapV3Router02ContractAddress,
-      abi: uniswapV3Router02Abi,
-      functionName: 'exactInputSingle',
-      args: [
-        {
-          tokenIn: tokenIn.address,
-          tokenOut: tokenOut.address,
-          fee: fees[0],
-          recipient: to,
-          amountIn: parsedAmountIn,
-          amountOutMinimum: parsedAmountOutMin,
-          sqrtPriceLimitX96: 0n,
-        },
-      ],
-      chainId,
-    });
-  } else {
-    hash = await writeContract(wagmiConfig, {
-      address: uniswapV3Router02ContractAddress,
-      abi: uniswapV3Router02Abi,
-      functionName: 'exactInput',
-      args: [
-        {
-          path,
-          recipient: to,
-          amountIn: parsedAmountIn,
-          amountOutMinimum: parsedAmountOutMin,
-        },
-      ],
-      chainId,
-    });
-  }
+  const hash = await sendTransaction(wagmiConfig, {
+    data: calldata,
+    to,
+    value: BigInt(value),
+    gas: BigInt(8000000),
+    // maxFeePerGas: MAX_FEE_PER_GAS,
+    // maxPriorityFeePerGas: MAX_PRIORITY_FEE_PER_GAS,
+  });
 
   const receipt = await waitForTransactionReceipt(wagmiConfig, {
     hash,
@@ -196,8 +174,19 @@ export async function swapTokensV3(
   amountOutMin: string,
   tokenInAddress: string,
   tokenOutAddress: string,
-  to: Address,
   chainId: ChainId = ChainId.Sepolia,
+  calldata: `0x${string}`,
+  value: `0x${string}`,
+  to: Address,
 ) {
-  return swapExactInputV3(amountIn, amountOutMin, tokenInAddress, tokenOutAddress, to, chainId);
+  return swapExactInputV3(
+    amountIn,
+    amountOutMin,
+    tokenInAddress,
+    tokenOutAddress,
+    chainId,
+    calldata,
+    value,
+    to,
+  );
 }

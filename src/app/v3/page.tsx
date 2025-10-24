@@ -147,6 +147,9 @@ export default function Page() {
         tokenInAddress: sellTokenAddress,
         tokenOutAddress: buyTokenAddress,
         slippage: slippageTolerance,
+        calldata: routeData.methodParameters!.calldata as `0x${string}`,
+        value: routeData.methodParameters!.value as `0x${string}`,
+        to: routeData.methodParameters!.to as Address,
       });
     }
   };
