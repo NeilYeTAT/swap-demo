@@ -74,28 +74,23 @@ export default function Page() {
   const { data: sellTokenBalance } = useTokenBalance(sellTokenAddress, ChainId.Sepolia);
   const { data: buyTokenBalance } = useTokenBalance(buyTokenAddress, ChainId.Sepolia);
 
-  // 防抖函数
   const debouncedUpdateValues = useCallback((amount: string, slippageVal: string) => {
-    // 清除之前的定时器
     if (debounceTimeoutRef.current != null) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // 设置新的定时器
     debounceTimeoutRef.current = setTimeout(() => {
       setDebouncedSellAmount(amount);
       setDebouncedSlippage(slippageVal);
     }, 500); // 500ms 防抖延迟
   }, []);
 
-  // 监听输入变化，触发防抖
   useEffect(() => {
     if (activeInput === 'sell') {
       debouncedUpdateValues(sellAmount, slippage);
     }
   }, [sellAmount, slippage, activeInput, debouncedUpdateValues]);
 
-  // 清理函数
   useEffect(() => {
     return () => {
       if (debounceTimeoutRef.current != null) {
@@ -118,12 +113,10 @@ export default function Page() {
       account,
     ],
     queryFn: async () => {
-      // 取消之前的请求
       if (abortControllerRef.current != null) {
         abortControllerRef.current.abort();
       }
 
-      // 创建新的 AbortController
       abortControllerRef.current = new AbortController();
 
       const params = new URLSearchParams({
@@ -151,7 +144,6 @@ export default function Page() {
     refetchInterval: 10000,
     staleTime: 5000,
     retry: (failureCount, error) => {
-      // 如果是因为请求被取消，则不重试
       if (error.name === 'AbortError') {
         return false;
       }
@@ -260,7 +252,17 @@ export default function Page() {
     if (isPending === true) return 'Swapping...';
     if (isRouteLoading) return 'Fetching Price...';
     if (sellTokenInfo == null || buyTokenInfo == null) return 'Invalid token address';
-    if (routeData?.success === false && routeData.error != null) return routeData.error;
+
+    if (routeData?.success === false && routeData.error != null) {
+      if (routeData.error === 'Insufficient liquidity') {
+        return '流动性不足';
+      }
+      if (routeData.error === 'No route found') {
+        return '未找到交易路径';
+      }
+      return routeData.error;
+    }
+
     if (routeData?.success !== true) return 'No route found';
 
     const balance = parseFloat(sellTokenBalance ?? '0');

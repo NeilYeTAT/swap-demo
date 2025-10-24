@@ -110,6 +110,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (route.quote.numerator.toString() === '0') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Insufficient liquidity',
+          details: 'No available liquidity for this swap amount or token pair',
+        },
+        { status: 400 },
+      );
+    }
+
     const firstRoute = route.route[0];
     const protocol = (firstRoute?.protocol as string) ?? 'V3';
 
